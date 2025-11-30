@@ -1,4 +1,4 @@
-export type TabStatus = 'pending' | 'done';
+export type TabStatus = 'pending' | 'done' | 'dismissed';
 export type SessionStatus = 'pending' | 'completed';
 
 export interface Tab {

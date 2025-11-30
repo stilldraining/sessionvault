@@ -34,10 +34,42 @@ function Popup() {
     }
   }
 
-  function openManager() {
-    chrome.tabs.create({
-      url: chrome.runtime.getURL('src/manager/manager.html'),
-    });
+  async function openManager() {
+    const managerUrl = chrome.runtime.getURL('src/manager/manager.html');
+    
+    try {
+      // Check if a tab with the manager URL already exists
+      const existingTabs = await chrome.tabs.query({
+        url: managerUrl,
+      });
+      
+      if (existingTabs.length > 0) {
+        // Tab already exists - navigate to it
+        const existingTab = existingTabs[0];
+        await chrome.tabs.update(existingTab.id!, { active: true });
+        
+        // Focus the window containing the tab
+        if (existingTab.windowId) {
+          await chrome.windows.update(existingTab.windowId, { focused: true });
+        }
+      } else {
+        // No existing tab - create a new one
+        await chrome.tabs.create({
+          url: managerUrl,
+        });
+      }
+    } catch (error) {
+      console.error('Error opening session manager:', error);
+      // Fallback: try to create a new tab
+      try {
+        await chrome.tabs.create({
+          url: managerUrl,
+        });
+      } catch (fallbackError) {
+        console.error('Error creating fallback tab:', fallbackError);
+      }
+    }
+    
     window.close();
   }
 

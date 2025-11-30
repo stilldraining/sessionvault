@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getSessionFull, updateSession, getCurrentSession } from '../../lib/storage';
-import type { Session, Tab } from '../../lib/types';
+import type { Session, Tab, TabStatus } from '../../lib/types';
 import TabCard from '../components/TabCard';
-import SaveMenu from '../components/SaveMenu';
+import NotionModal from '../components/NotionModal';
 
 export default function SessionDetail() {
   const { id } = useParams<{ id: string }>();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const [notionModalOpen, setNotionModalOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<Tab | null>(null);
+  const [dismissedExpanded, setDismissedExpanded] = useState(false);
   const isCurrentSession = id === 'current';
 
   useEffect(() => {
@@ -41,14 +42,16 @@ export default function SessionDetail() {
     }
   }
 
-  async function updateTabStatus(tabId: string, status: 'pending' | 'done') {
+  async function updateTabStatus(tabId: string, status: TabStatus) {
     if (!session) return;
 
     const updatedTabs = session.tabs.map((tab) =>
       tab.id === tabId ? { ...tab, status } : tab
     );
 
-    const allDone = updatedTabs.every((tab) => tab.status === 'done');
+    // Check if all non-dismissed tabs are done
+    const activeTabs = updatedTabs.filter((tab) => tab.status !== 'dismissed');
+    const allDone = activeTabs.length > 0 && activeTabs.every((tab) => tab.status === 'done');
     const updatedSession: Session = {
       ...session,
       tabs: updatedTabs,
@@ -65,6 +68,7 @@ export default function SessionDetail() {
   }
 
   async function handleOpen(tab: Tab) {
+    // Open action does not change state
     if (isCurrentSession && tab.id.startsWith('chrome_')) {
       // For current session, navigate the existing Chrome tab
       const chromeTabId = parseInt(tab.id.replace('chrome_', ''), 10);
@@ -84,32 +88,63 @@ export default function SessionDetail() {
       // For saved sessions, create a new tab
       chrome.tabs.create({ url: tab.url });
     }
-    updateTabStatus(tab.id, 'done');
   }
 
-  function handleDismiss(tab: Tab) {
-    updateTabStatus(tab.id, 'done');
+  async function handleCopyLink(tab: Tab) {
+    // Copy link does not change state
+    try {
+      await navigator.clipboard.writeText(tab.url);
+    } catch (error) {
+      console.error('Error copying link:', error);
+      alert('Failed to copy link');
+    }
   }
 
-  function handleSave(tab: Tab) {
+  async function handleBookmark(tab: Tab) {
+    try {
+      await chrome.bookmarks.create({
+        title: tab.title,
+        url: tab.url,
+      });
+      // On success, change to done
+      await updateTabStatus(tab.id, 'done');
+    } catch (error) {
+      console.error('Error bookmarking:', error);
+      alert('Failed to bookmark');
+    }
+  }
+
+  function handleSaveToNotion(tab: Tab) {
     setSelectedTab(tab);
-    setSaveMenuOpen(true);
+    setNotionModalOpen(true);
   }
 
-  async function handleSaveComplete() {
+  async function handleNotionSuccess() {
     if (selectedTab) {
       await updateTabStatus(selectedTab.id, 'done');
     }
-    setSaveMenuOpen(false);
+    setNotionModalOpen(false);
     setSelectedTab(null);
+  }
+
+  function handleClose(tab: Tab) {
+    // Only for previous sessions (not current)
+    if (!isCurrentSession) {
+      updateTabStatus(tab.id, 'dismissed');
+    }
+  }
+
+  function handleRestore(tab: Tab) {
+    updateTabStatus(tab.id, 'pending');
   }
 
   async function handleMarkComplete() {
     if (!session) return;
 
+    // Mark all non-dismissed tabs as done
     const updatedTabs = session.tabs.map((tab) => ({
       ...tab,
-      status: 'done' as const,
+      status: tab.status === 'dismissed' ? tab.status : ('done' as const),
     }));
 
     const updatedSession: Session = {
@@ -143,9 +178,12 @@ export default function SessionDetail() {
     );
   }
 
-  const pendingTabs = session.tabs.filter((t) => t.status === 'pending');
-  const doneTabs = session.tabs.filter((t) => t.status === 'done');
-  const totalTabs = session.tabs.length;
+  // Filter tabs: active (pending/done) and dismissed
+  const activeTabs = session.tabs.filter((t) => t.status !== 'dismissed');
+  const dismissedTabs = session.tabs.filter((t) => t.status === 'dismissed');
+  const pendingTabs = activeTabs.filter((t) => t.status === 'pending');
+  const doneTabs = activeTabs.filter((t) => t.status === 'done');
+  const totalTabs = activeTabs.length;
   const processedCount = doneTabs.length;
 
   const canMarkComplete = pendingTabs.length > 0 && session.status !== 'completed';
@@ -169,26 +207,56 @@ export default function SessionDetail() {
       </div>
 
       <div className="tabs-list">
-        {session.tabs.map((tab) => (
+        {activeTabs.map((tab) => (
           <TabCard
             key={tab.id}
             tab={tab}
+            isCurrentSession={isCurrentSession}
             onOpen={() => handleOpen(tab)}
-            onDismiss={() => handleDismiss(tab)}
-            onSave={() => handleSave(tab)}
+            onCopyLink={() => handleCopyLink(tab)}
+            onBookmark={() => handleBookmark(tab)}
+            onSaveToNotion={() => handleSaveToNotion(tab)}
+            onClose={!isCurrentSession ? () => handleClose(tab) : undefined}
           />
         ))}
       </div>
 
-      {saveMenuOpen && selectedTab && (
-        <SaveMenu
+      {dismissedTabs.length > 0 && (
+        <div className="dismissed-section">
+          <button
+            className="dismissed-section-header"
+            onClick={() => setDismissedExpanded(!dismissedExpanded)}
+          >
+            <span>Dismissed ({dismissedTabs.length})</span>
+            <span className="dismissed-toggle">{dismissedExpanded ? '▼' : '▶'}</span>
+          </button>
+          {dismissedExpanded && (
+            <div className="dismissed-tabs-list">
+              {dismissedTabs.map((tab) => (
+                <TabCard
+                  key={tab.id}
+                  tab={tab}
+                  isCurrentSession={isCurrentSession}
+                  onOpen={() => handleOpen(tab)}
+                  onCopyLink={() => handleCopyLink(tab)}
+                  onBookmark={() => handleBookmark(tab)}
+                  onSaveToNotion={() => handleSaveToNotion(tab)}
+                  onRestore={() => handleRestore(tab)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {notionModalOpen && selectedTab && (
+        <NotionModal
           tab={selectedTab}
-          sessionId={session.id}
           onClose={() => {
-            setSaveMenuOpen(false);
+            setNotionModalOpen(false);
             setSelectedTab(null);
           }}
-          onSaveComplete={handleSaveComplete}
+          onSuccess={handleNotionSuccess}
         />
       )}
     </div>

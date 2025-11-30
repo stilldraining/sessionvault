@@ -245,6 +245,11 @@ body {
   background: #f9fafb;
 }
 
+.tab-card-dismissed {
+  opacity: 0.5;
+  background: #f3f4f6;
+}
+
 .tab-card-content {
   display: flex;
   align-items: flex-start;
@@ -290,6 +295,11 @@ body {
   font-weight: 500;
 }
 
+.tab-status-dismissed {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .tab-actions {
   display: flex;
   gap: 8px;
@@ -318,6 +328,53 @@ body {
 
 .tab-action-primary:hover {
   background: #1d4ed8;
+}
+
+.tab-action-icon-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tab-action-icon-button:hover {
+  background: #e5e5e5;
+  border-color: #d1d5db;
+}
+
+.tab-action-close {
+  color: #dc2626;
+}
+
+.tab-action-close:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
+.tab-action-text-button {
+  padding: 6px 12px;
+  background: #2563eb;
+  color: white;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-action-text-button:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
 /* Save Menu */
@@ -715,5 +772,146 @@ body {
 
 .error-state {
   color: #ef4444;
+}
+
+/* Dismissed Section */
+.dismissed-section {
+  margin-top: 32px;
+  border-top: 1px solid #e5e5e5;
+  padding-top: 24px;
+}
+
+.dismissed-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.dismissed-section-header:hover {
+  background: #f3f4f6;
+}
+
+.dismissed-toggle {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.dismissed-tabs-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Notion Modal */
+.notion-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.notion-modal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.notion-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.notion-modal-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.notion-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.notion-modal-close:hover {
+  background: #f5f5f5;
+}
+
+.notion-modal-content {
+  padding: 20px;
+}
+
+.notion-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.notion-modal-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #e5e5e5;
+}
+
+.notion-modal-cancel {
+  background: white;
+  color: #1a1a1a;
+}
+
+.notion-modal-cancel:hover {
+  background: #f5f5f5;
+}
+
+.notion-modal-confirm {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.notion-modal-confirm:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.notion-modal-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
