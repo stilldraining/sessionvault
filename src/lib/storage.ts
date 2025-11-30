@@ -107,6 +107,16 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEYS.SESSIONS]: filtered });
 }
 
+export async function archiveSession(sessionId: string): Promise<void> {
+  await updateSession(sessionId, { status: 'archived' });
+  // Note: Archived sessions are identified by status 'archived' and are moved to Archived Sessions section
+}
+
+export async function restoreSession(sessionId: string): Promise<void> {
+  await updateSession(sessionId, { status: 'organised' });
+  // Restore archived session back to organised status
+}
+
 export async function clearAllSessions(): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEYS.SESSIONS]: [] });
 }

@@ -23,7 +23,7 @@ async function createSessionFromBackup(): Promise<void> {
     const session: Session = {
       id: generateSessionId(),
       timestamp: backup.timestamp, // Use backup timestamp, not current time
-      status: 'pending',
+      status: 'to-do',
       tabs: backup.tabs,
     };
 
@@ -125,4 +125,52 @@ async function initializeServiceWorker() {
 // Initialize when service worker loads
 console.log('[SessionVault] Service worker script executing');
 initializeServiceWorker();
+
+// Handle extension icon click - open session manager
+// This must be registered at the top level, not inside an async function
+chrome.action.onClicked.addListener(async (tab) => {
+  console.log('[SessionVault] Extension icon clicked!');
+  const managerUrl = chrome.runtime.getURL('manager.html');
+  console.log('[SessionVault] Manager URL:', managerUrl);
+  
+  try {
+    // Check if a tab with the manager URL already exists
+    const existingTabs = await chrome.tabs.query({
+      url: managerUrl,
+    });
+    
+    console.log('[SessionVault] Existing tabs with manager URL:', existingTabs.length);
+    
+    if (existingTabs.length > 0) {
+      // Tab already exists - navigate to it
+      const existingTab = existingTabs[0];
+      await chrome.tabs.update(existingTab.id!, { active: true });
+      
+      // Focus the window containing the tab
+      if (existingTab.windowId) {
+        await chrome.windows.update(existingTab.windowId, { focused: true });
+      }
+      console.log('[SessionVault] Focused existing manager tab');
+    } else {
+      // No existing tab - create a new one
+      const newTab = await chrome.tabs.create({
+        url: managerUrl,
+      });
+      console.log('[SessionVault] Created new manager tab:', newTab.id);
+    }
+  } catch (error) {
+    console.error('[SessionVault] Error opening session manager:', error);
+    // Fallback: try to create a new tab
+    try {
+      const fallbackTab = await chrome.tabs.create({
+        url: managerUrl,
+      });
+      console.log('[SessionVault] Fallback tab created:', fallbackTab.id);
+    } catch (fallbackError) {
+      console.error('[SessionVault] Error creating fallback tab:', fallbackError);
+    }
+  }
+});
+
+console.log('[SessionVault] Action onClicked listener registered');
 

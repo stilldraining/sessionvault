@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getNotionConfig,
   connectNotion,
@@ -11,6 +12,7 @@ import { clearAllSessions } from '../../lib/storage';
 import type { NotionConfig } from '../../lib/types';
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [config, setConfig] = useState<NotionConfig>({ databases: {} });
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -187,7 +189,16 @@ export default function Settings() {
 
   return (
     <div className="settings-container">
-      <h2 className="settings-title">Settings</h2>
+      <div className="settings-header">
+        <button
+          className="settings-back-button"
+          onClick={() => navigate('/session/current')}
+          aria-label="Back to sessions"
+        >
+          ← Back to Sessions
+        </button>
+        <h2 className="settings-title">Settings</h2>
+      </div>
 
       <div className="settings-section">
         <h3 className="settings-section-title">Notion Integration</h3>

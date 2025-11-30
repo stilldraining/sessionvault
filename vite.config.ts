@@ -16,7 +16,13 @@ export default defineConfig({
         
         // Update paths for built files
         manifest.background.service_worker = 'background/service-worker.js';
-        manifest.action.default_popup = 'popup.html';
+        // Remove default_popup if it exists (we're using onClicked instead)
+        // This is critical - if default_popup exists, onClicked won't fire
+        if (manifest.action) {
+          delete manifest.action.default_popup;
+        } else {
+          manifest.action = {};
+        }
         
         // Ensure dist directory exists
         if (!existsSync('dist')) {
@@ -36,7 +42,6 @@ export default defineConfig({
         
         // Copy and fix HTML files - move to root and fix absolute paths
         const htmlFiles = [
-          { src: 'dist/src/popup/popup.html', dest: 'dist/popup.html' },
           { src: 'dist/src/manager/manager.html', dest: 'dist/manager.html' }
         ];
         
@@ -77,7 +82,6 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, 'src/popup/popup.html'),
         manager: resolve(__dirname, 'src/manager/manager.html'),
         'service-worker': resolve(__dirname, 'src/background/service-worker.ts'),
       },

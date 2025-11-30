@@ -4,7 +4,7 @@ import { getSessionMetadata, getCurrentSession, clearAllSessions } from '../../l
 import type { SessionMetadata, Session } from '../../lib/types';
 import SessionCard from '../components/SessionCard';
 
-type FilterStatus = 'all' | 'pending' | 'completed';
+type FilterStatus = 'all' | 'pending' | 'to-do' | 'organised';
 
 export default function SessionsList() {
   const [sessions, setSessions] = useState<SessionMetadata[]>([]);
@@ -107,7 +107,8 @@ export default function SessionsList() {
           >
             <option value="all">All</option>
             <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
+            <option value="to-do">To-do</option>
+            <option value="organised">Organised</option>
           </select>
           {sessions.length > 0 && (
             <button

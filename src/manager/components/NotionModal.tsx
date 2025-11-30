@@ -3,12 +3,12 @@ import type { Tab } from '../../lib/types';
 import { getNotionConfig, fetchDatabases, createNotionPage } from '../../lib/notion';
 
 interface NotionModalProps {
-  tab: Tab;
+  tabs: Tab[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function NotionModal({ tab, onClose, onSuccess }: NotionModalProps) {
+export default function NotionModal({ tabs, onClose, onSuccess }: NotionModalProps) {
   const [notionTags, setNotionTags] = useState('');
   const [notionDatabase, setNotionDatabase] = useState('');
   const [saving, setSaving] = useState(false);
@@ -49,6 +49,11 @@ export default function NotionModal({ tab, onClose, onSuccess }: NotionModalProp
       return;
     }
 
+    if (tabs.length === 0) {
+      alert('No tabs to save');
+      return;
+    }
+
     setSaving(true);
     try {
       const config = await getNotionConfig();
@@ -63,18 +68,21 @@ export default function NotionModal({ tab, onClose, onSuccess }: NotionModalProp
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
 
-      await createNotionPage(
-        notionDatabase,
-        tab.title,
-        tab.url,
-        tags,
-        mapping
-      );
+      // Save all tabs to the same database with the same tags
+      for (const tab of tabs) {
+        await createNotionPage(
+          notionDatabase,
+          tab.title,
+          tab.url,
+          tags,
+          mapping
+        );
+      }
       
       onSuccess();
     } catch (error) {
       console.error('Error saving to Notion:', error);
-      alert('Failed to save to Notion. Please try again.');
+      alert(`Failed to save ${tabs.length > 1 ? 'some tabs' : 'tab'} to Notion. Please try again.`);
     } finally {
       setSaving(false);
     }
@@ -85,7 +93,7 @@ export default function NotionModal({ tab, onClose, onSuccess }: NotionModalProp
       <div className="notion-modal-overlay" onClick={onClose}>
         <div className="notion-modal" onClick={(e) => e.stopPropagation()}>
           <div className="notion-modal-header">
-            <h3>Save to Notion</h3>
+            <h3>Save {tabs.length} {tabs.length === 1 ? 'tab' : 'tabs'} to Notion</h3>
             <button className="notion-modal-close" onClick={onClose}>
               ×
             </button>
@@ -151,7 +159,7 @@ export default function NotionModal({ tab, onClose, onSuccess }: NotionModalProp
               onClick={handleSave}
               disabled={saving || !notionDatabase}
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? `Saving ${tabs.length} ${tabs.length === 1 ? 'tab' : 'tabs'}...` : `Save ${tabs.length} ${tabs.length === 1 ? 'tab' : 'tabs'}`}
             </button>
           </div>
         </div>

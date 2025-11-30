@@ -1,5 +1,5 @@
-export type TabStatus = 'pending' | 'done' | 'dismissed';
-export type SessionStatus = 'pending' | 'completed';
+export type TabStatus = 'pending' | 'done' | 'dismissed' | 'bookmarked' | 'saved-to-notion';
+export type SessionStatus = 'pending' | 'to-do' | 'organised' | 'archived';
 
 export interface Tab {
   id: string;
