@@ -6,6 +6,7 @@ import TabCard from '../components/TabCard';
 import NotionModal from '../components/NotionModal';
 import { useSelection } from '../contexts/SelectionContext';
 import { useSessionActions } from '../contexts/SessionActionsContext';
+import { useToast } from '../contexts/ToastContext';
 
 export default function SessionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ export default function SessionDetail() {
   const isCurrentSession = id === 'current';
   const { selectedTabs, toggleSelection, clearSelection, setPendingTabIds, setBulkActions } = useSelection();
   const { setSessionActions } = useSessionActions();
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (id) {
@@ -145,14 +147,22 @@ export default function SessionDetail() {
           title: tab.title,
           url: tab.url,
         });
-        await updateTabStatus(tab.id, 'bookmarked');
+        // For current session, don't update status (tabs stay visible)
+        // For past sessions, update status to move to accordion
+        if (!isCurrentSession) {
+          await updateTabStatus(tab.id, 'bookmarked');
+        }
       }
       clearSelection();
+      // Show toast for current session
+      if (isCurrentSession) {
+        showToast('Bookmarked');
+      }
     } catch (error) {
       console.error('Error bookmarking tabs:', error);
       alert('Failed to bookmark some tabs. Please try again.');
     }
-  }, [session, selectedTabs, updateTabStatus, clearSelection]);
+  }, [session, selectedTabs, updateTabStatus, clearSelection, isCurrentSession, showToast]);
 
   const handleBulkSaveToNotion = useCallback(() => {
     if (selectedTabs.size === 0) return;
@@ -176,6 +186,31 @@ export default function SessionDetail() {
     }
   }, [session, selectedTabs, updateTabStatus, clearSelection]);
 
+  const handleBulkCloseTab = useCallback(async () => {
+    if (!session || selectedTabs.size === 0 || !isCurrentSession) return;
+
+    const tabsToClose = session.tabs.filter((tab) => selectedTabs.has(tab.id));
+    
+    try {
+      // Close Chrome tabs (extract tab ID from chrome_ prefix)
+      for (const tab of tabsToClose) {
+        if (tab.id.startsWith('chrome_')) {
+          const chromeTabId = parseInt(tab.id.replace('chrome_', ''), 10);
+          await chrome.tabs.remove(chromeTabId);
+        }
+      }
+      clearSelection();
+      // Reload session to reflect closed tabs
+      const current = await getCurrentSession();
+      if (current) {
+        setSession(current);
+      }
+    } catch (error) {
+      console.error('Error closing tabs:', error);
+      alert('Failed to close some tabs. Please try again.');
+    }
+  }, [session, selectedTabs, clearSelection, isCurrentSession]);
+
   // Register bulk actions and update pending tab IDs when session changes
   useEffect(() => {
     if (session) {
@@ -184,13 +219,22 @@ export default function SessionDetail() {
         .map((tab) => tab.id);
       setPendingTabIds(pendingIds);
       
-      setBulkActions({
-        onBulkBookmark: handleBulkBookmark,
-        onBulkSaveToNotion: handleBulkSaveToNotion,
-        onBulkDismiss: handleBulkDismiss,
-      });
+      // For current session, use Close Tab; for past sessions, use Dismiss
+      if (isCurrentSession) {
+        setBulkActions({
+          onBulkBookmark: handleBulkBookmark,
+          onBulkSaveToNotion: handleBulkSaveToNotion,
+          onBulkCloseTab: handleBulkCloseTab,
+        });
+      } else {
+        setBulkActions({
+          onBulkBookmark: handleBulkBookmark,
+          onBulkSaveToNotion: handleBulkSaveToNotion,
+          onBulkDismiss: handleBulkDismiss,
+        });
+      }
     }
-  }, [session, selectedTabs, handleBulkBookmark, handleBulkSaveToNotion, handleBulkDismiss, setPendingTabIds, setBulkActions]);
+  }, [session, selectedTabs, handleBulkBookmark, handleBulkSaveToNotion, handleBulkDismiss, handleBulkCloseTab, isCurrentSession, setPendingTabIds, setBulkActions]);
 
   // Clear selection when session ID changes (not on every render)
   useEffect(() => {
@@ -204,12 +248,19 @@ export default function SessionDetail() {
     const tabsToSave = session.tabs.filter((tab) => selectedTabs.has(tab.id));
     
     try {
-      // Mark all selected tabs as saved-to-notion
-      for (const tab of tabsToSave) {
-        await updateTabStatus(tab.id, 'saved-to-notion');
+      // For current session, don't update status (tabs stay visible)
+      // For past sessions, update status to move to accordion
+      if (!isCurrentSession) {
+        for (const tab of tabsToSave) {
+          await updateTabStatus(tab.id, 'saved-to-notion');
+        }
       }
       setNotionModalOpen(false);
       clearSelection();
+      // Show toast for current session
+      if (isCurrentSession) {
+        showToast('Saved to Notion');
+      }
     } catch (error) {
       console.error('Error updating tab status:', error);
       alert('Failed to update some tabs. Please try again.');
@@ -231,8 +282,15 @@ export default function SessionDetail() {
         tab.status !== 'saved-to-notion'
       );
       
-      // Create tabs in the current window
-      for (const tab of tabsToRestore) {
+      // Query all existing tabs in the browser to check for duplicates
+      const existingTabs = await chrome.tabs.query({});
+      const existingUrls = new Set(existingTabs.map(tab => tab.url).filter(Boolean));
+      
+      // Filter out tabs whose URLs already exist in the browser
+      const tabsToCreate = tabsToRestore.filter(tab => !existingUrls.has(tab.url));
+      
+      // Create tabs only for URLs that don't already exist
+      for (const tab of tabsToCreate) {
         await chrome.tabs.create({ url: tab.url });
       }
     } catch (error) {

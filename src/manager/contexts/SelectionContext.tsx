@@ -11,10 +11,12 @@ interface SelectionContextType {
   onBulkBookmark?: () => void;
   onBulkSaveToNotion?: () => void;
   onBulkDismiss?: () => void;
+  onBulkCloseTab?: () => void;
   setBulkActions: (actions: {
     onBulkBookmark: () => void;
     onBulkSaveToNotion: () => void;
-    onBulkDismiss: () => void;
+    onBulkDismiss?: () => void;
+    onBulkCloseTab?: () => void;
   }) => void;
 }
 
@@ -26,7 +28,8 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
   const [bulkActions, setBulkActionsState] = useState<{
     onBulkBookmark: () => void;
     onBulkSaveToNotion: () => void;
-    onBulkDismiss: () => void;
+    onBulkDismiss?: () => void;
+    onBulkCloseTab?: () => void;
   } | null>(null);
 
   const toggleSelection = useCallback((tabId: string) => {
@@ -52,7 +55,8 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
   const setBulkActions = useCallback((actions: {
     onBulkBookmark: () => void;
     onBulkSaveToNotion: () => void;
-    onBulkDismiss: () => void;
+    onBulkDismiss?: () => void;
+    onBulkCloseTab?: () => void;
   }) => {
     setBulkActionsState(actions);
   }, []);
@@ -70,6 +74,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
         onBulkBookmark: bulkActions?.onBulkBookmark,
         onBulkSaveToNotion: bulkActions?.onBulkSaveToNotion,
         onBulkDismiss: bulkActions?.onBulkDismiss,
+        onBulkCloseTab: bulkActions?.onBulkCloseTab,
         setBulkActions,
       }}
     >

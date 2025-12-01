@@ -169,6 +169,16 @@ body {
   background: #fecaca;
 }
 
+.nav-action-close {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+.nav-action-close:hover:not(:disabled) {
+  background: #fecaca;
+}
+
 .nav-action-clear {
   background: var(--bg-secondary);
   border-color: var(--border-secondary);
@@ -1748,5 +1758,42 @@ body {
 .keep-option-button:hover {
   background: var(--bg-hover);
   border-color: var(--primary);
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 12px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  animation: toastSlideIn 0.3s ease-out;
+  pointer-events: auto;
+  min-width: 200px;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 

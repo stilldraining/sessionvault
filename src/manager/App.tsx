@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { SelectionProvider, useSelection } from './contexts/SelectionContext';
 import { SessionActionsProvider, useSessionActions } from './contexts/SessionActionsContext';
+import { ToastProvider } from './contexts/ToastContext';
 import SessionsSidebar from './components/SessionsSidebar';
 import SessionDetail from './views/SessionDetail';
 import Settings from './views/Settings';
@@ -17,7 +18,7 @@ function NavigationActions() {
   const [isCurrentSession, setIsCurrentSession] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<'pending' | 'to-do' | 'organised' | 'archived' | null>(null);
 
-  const { selectedTabs, hasSelection, pendingTabIds, selectAll, clearSelection, onBulkBookmark, onBulkSaveToNotion, onBulkDismiss } = useSelection();
+  const { selectedTabs, hasSelection, pendingTabIds, selectAll, clearSelection, onBulkBookmark, onBulkSaveToNotion, onBulkDismiss, onBulkCloseTab } = useSelection();
   const { onRestoreWindow, onArchiveSession, onDeleteSession, onRestoreSession } = useSessionActions();
 
   // Extract session ID from pathname
@@ -47,8 +48,8 @@ function NavigationActions() {
   const canSelectAll = pendingTabIds.length > 0 && !hasSelection;
   const isArchived = sessionStatus === 'archived';
   const isOrganised = sessionStatus === 'organised';
-  // Only show session actions in header for organised sessions (archived sessions show buttons in completion message)
-  const showSessionActions = !isCurrentSession && !hasSelection && isOrganised && 
+  // Show session actions in header for all non-archived, non-current sessions when no selection is made (archived sessions show buttons in completion message)
+  const showSessionActions = !isCurrentSession && !hasSelection && !isArchived && sessionStatus !== null && 
     onRestoreWindow && onArchiveSession && onDeleteSession;
   const showSelectAll = canSelectAll && isCurrentSession;
 
@@ -74,13 +75,23 @@ function NavigationActions() {
             >
               Save to Notion
             </button>
-            <button 
-              className="nav-action-button nav-action-dismiss" 
-              onClick={onBulkDismiss}
-              disabled={!onBulkDismiss}
-            >
-              Dismiss
-            </button>
+            {isCurrentSession ? (
+              <button 
+                className="nav-action-button nav-action-close" 
+                onClick={onBulkCloseTab}
+                disabled={!onBulkCloseTab}
+              >
+                Close Tab
+              </button>
+            ) : (
+              <button 
+                className="nav-action-button nav-action-dismiss" 
+                onClick={onBulkDismiss}
+                disabled={!onBulkDismiss}
+              >
+                Dismiss
+              </button>
+            )}
             <button className="nav-action-button nav-action-clear" onClick={clearSelection}>
               Clear
             </button>
@@ -146,22 +157,24 @@ function SessionLayout() {
 function App() {
   return (
     <HashRouter>
-      <SelectionProvider>
-        <SessionActionsProvider>
-          <div className="manager-app">
-            <Navigation />
-            <Routes>
-              <Route path="/" element={<Navigate to="/session/current" replace />} />
-              <Route path="/session/*" element={<SessionLayout />} />
-              <Route path="/settings" element={
-                <main className="manager-main">
-                  <Settings />
-                </main>
-              } />
-            </Routes>
-          </div>
-        </SessionActionsProvider>
-      </SelectionProvider>
+      <ToastProvider>
+        <SelectionProvider>
+          <SessionActionsProvider>
+            <div className="manager-app">
+              <Navigation />
+              <Routes>
+                <Route path="/" element={<Navigate to="/session/current" replace />} />
+                <Route path="/session/*" element={<SessionLayout />} />
+                <Route path="/settings" element={
+                  <main className="manager-main">
+                    <Settings />
+                  </main>
+                } />
+              </Routes>
+            </div>
+          </SessionActionsProvider>
+        </SelectionProvider>
+      </ToastProvider>
     </HashRouter>
   );
 }
