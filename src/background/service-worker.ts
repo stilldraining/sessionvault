@@ -1,4 +1,14 @@
-import { saveSession, saveBackupCapture, getBackupCapture, clearBackupCapture, getSessions } from '../lib/storage';
+import { 
+  saveSession, 
+  getBackupCapture, 
+  clearBackupCapture, 
+  getSessions,
+  saveWindowBackup,
+  getWindowBackups,
+  getWindowBackup,
+  clearWindowBackup,
+  clearAllWindowBackups,
+} from '../lib/storage';
 import type { Session, Tab } from '../lib/types';
 
 function generateSessionId(): string {
@@ -9,7 +19,7 @@ function generateTabId(): string {
   return `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Create session from backup - used in startup recovery
+// Create session from backup - used in startup recovery (legacy single backup)
 async function createSessionFromBackup(): Promise<void> {
   try {
     const backup = await getBackupCapture();
@@ -48,42 +58,107 @@ async function createSessionFromBackup(): Promise<void> {
   }
 }
 
-// Periodic backup capture - saves ALL current tabs every 10 seconds
-async function performBackupCapture(): Promise<void> {
+// Create session from a specific window backup
+async function createSessionFromWindowBackup(windowId: string, backup: { timestamp: number; tabs: Tab[] }): Promise<void> {
   try {
-    // Query ALL tabs - this is the key to capturing everything
-    const chromeTabs = await chrome.tabs.query({});
-    
-    console.log(`[SessionVault] Backup capture: Found ${chromeTabs.length} tabs`);
-    
-    if (chromeTabs.length === 0) {
-      // 0 tabs found - browser is closing!
-      // If we have a backup with tabs, create a session from it NOW
-      const existingBackup = await getBackupCapture();
-      if (existingBackup && existingBackup.tabs.length > 0) {
-        console.log(`[SessionVault] Browser closing detected! Creating session from backup with ${existingBackup.tabs.length} tabs`);
-        await createSessionFromBackup();
-      } else {
-        console.log('[SessionVault] Browser closing but no backup to save');
-      }
+    if (!backup || backup.tabs.length === 0) {
+      console.log(`[SessionVault] No tabs in window ${windowId} backup, skipping`);
       return;
     }
 
-    // Convert Chrome tabs to our Tab format
-    const tabs: Tab[] = chromeTabs.map((chromeTab) => ({
-      id: generateTabId(),
-      title: chromeTab.title || 'Untitled',
-      url: chromeTab.url || '',
-      status: 'pending',
-      favIconUrl: chromeTab.favIconUrl,
-    }));
+    console.log(`[SessionVault] Creating session from window ${windowId} backup: ${backup.tabs.length} tabs`);
 
-    await saveBackupCapture(tabs);
-    console.log(`[SessionVault] Backup saved: ${tabs.length} tabs at ${new Date().toISOString()}`);
+    const session: Session = {
+      id: generateSessionId(),
+      timestamp: backup.timestamp,
+      status: 'to-do',
+      tabs: backup.tabs,
+    };
+
+    await saveSession(session);
     
-    // Log tab URLs for debugging (first 5)
-    const sampleUrls = tabs.slice(0, 5).map(t => t.url);
-    console.log(`[SessionVault] Sample tab URLs: ${sampleUrls.join(', ')}${tabs.length > 5 ? '...' : ''}`);
+    // Verify session was saved
+    const savedSessions = await getSessions();
+    const savedSession = savedSessions.find(s => s.id === session.id);
+    if (savedSession) {
+      console.log(`[SessionVault] ✓ Window ${windowId} session saved: ${savedSession.id} with ${savedSession.tabs.length} tabs`);
+    } else {
+      console.error(`[SessionVault] ✗ Window ${windowId} session NOT found after save!`);
+    }
+  } catch (error) {
+    console.error(`[SessionVault] Error creating session from window ${windowId}:`, error);
+  }
+}
+
+// Recover all window backups from previous browser session
+async function recoverWindowBackups(): Promise<void> {
+  try {
+    // First, recover any legacy single backup (from older versions)
+    const legacyBackup = await getBackupCapture();
+    if (legacyBackup && legacyBackup.tabs.length > 0) {
+      console.log(`[SessionVault] Recovering legacy backup with ${legacyBackup.tabs.length} tabs`);
+      await createSessionFromBackup();
+    }
+    
+    // Now recover per-window backups
+    const windowBackups = await getWindowBackups();
+    const windowIds = Object.keys(windowBackups);
+    
+    if (windowIds.length === 0) {
+      console.log('[SessionVault] No window backups to recover');
+      return;
+    }
+    
+    console.log(`[SessionVault] === RECOVERING ${windowIds.length} WINDOW BACKUP(S) ===`);
+    
+    for (const windowId of windowIds) {
+      const backup = windowBackups[windowId];
+      await createSessionFromWindowBackup(windowId, backup);
+    }
+    
+    // Clear all window backups after recovery
+    await clearAllWindowBackups();
+    console.log('[SessionVault] All window backups recovered and cleared');
+  } catch (error) {
+    console.error('[SessionVault] Error recovering window backups:', error);
+  }
+}
+
+// Periodic backup capture - saves tabs PER WINDOW every 10 seconds
+async function performBackupCapture(): Promise<void> {
+  try {
+    // Query all windows
+    const windows = await chrome.windows.getAll({ populate: true });
+    
+    if (windows.length === 0) {
+      console.log('[SessionVault] No windows found - browser may be closing');
+      return;
+    }
+    
+    let totalTabs = 0;
+    
+    // Process each window separately
+    for (const window of windows) {
+      // Skip windows without an ID or without tabs
+      if (!window.id || !window.tabs || window.tabs.length === 0) {
+        continue;
+      }
+      
+      // Convert Chrome tabs to our Tab format
+      const tabs: Tab[] = window.tabs.map((chromeTab) => ({
+        id: generateTabId(),
+        title: chromeTab.title || 'Untitled',
+        url: chromeTab.url || '',
+        status: 'pending',
+        favIconUrl: chromeTab.favIconUrl,
+      }));
+      
+      // Save backup for this specific window
+      await saveWindowBackup(window.id, tabs);
+      totalTabs += tabs.length;
+    }
+    
+    console.log(`[SessionVault] Backup saved: ${totalTabs} tabs across ${windows.length} window(s) at ${new Date().toISOString()}`);
   } catch (error) {
     console.error('[SessionVault] Error in backup capture:', error);
   }
@@ -116,11 +191,67 @@ function stopBackupInterval() {
 async function initializeServiceWorker() {
   console.log('[SessionVault] === SERVICE WORKER INITIALIZING ===');
   
-  // Just start backup interval - session creation happens when we detect 0 tabs
+  // Note: We do NOT start the backup interval here!
+  // - On browser startup: onStartup fires first, recovers backups, THEN starts interval
+  // - On extension install/reload: onInstalled fires and starts interval
+  // This prevents the race condition where new window backups get mistaken for old ones
+  
+  console.log('[SessionVault] Background service worker initialized (waiting for startup/install event)');
+}
+
+// Browser startup handler - this only fires when Chrome actually starts
+// NOT when the service worker wakes up from being idle
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('[SessionVault] === BROWSER STARTUP DETECTED ===');
+  
+  // IMPORTANT: Recover backups FIRST, before starting new backup captures
+  // This prevents the race condition where new window tabs get mistaken for old sessions
+  await recoverWindowBackups();
+  
+  console.log('[SessionVault] Startup recovery complete, now starting backup interval');
+  
+  // NOW it's safe to start the backup interval
+  startBackupInterval();
+});
+
+console.log('[SessionVault] onStartup listener registered');
+
+// Extension install/reload handler - starts backup interval when onStartup won't fire
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log(`[SessionVault] === EXTENSION ${details.reason.toUpperCase()} ===`);
+  
+  // On install or update, there's no previous session to recover
+  // Just start the backup interval immediately
   startBackupInterval();
   
-  console.log('[SessionVault] Background service worker initialized');
-}
+  console.log('[SessionVault] Backup interval started after install/update');
+});
+
+console.log('[SessionVault] onInstalled listener registered');
+
+// Window close handler - save session when a window is closed
+// This is the most reliable method because the service worker is still alive
+chrome.windows.onRemoved.addListener(async (windowId) => {
+  console.log(`[SessionVault] === WINDOW ${windowId} CLOSED ===`);
+  
+  try {
+    // Get the backup for this specific window
+    const backup = await getWindowBackup(windowId);
+    
+    if (backup && backup.tabs.length > 0) {
+      console.log(`[SessionVault] Saving session for window ${windowId} with ${backup.tabs.length} tabs`);
+      await createSessionFromWindowBackup(windowId.toString(), backup);
+      await clearWindowBackup(windowId);
+      console.log(`[SessionVault] Window ${windowId} session saved and backup cleared`);
+    } else {
+      console.log(`[SessionVault] No backup found for window ${windowId}, skipping`);
+    }
+  } catch (error) {
+    console.error(`[SessionVault] Error saving session for window ${windowId}:`, error);
+  }
+});
+
+console.log('[SessionVault] windows.onRemoved listener registered');
 
 // Initialize when service worker loads
 console.log('[SessionVault] Service worker script executing');

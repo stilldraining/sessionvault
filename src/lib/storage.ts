@@ -5,6 +5,7 @@ const STORAGE_KEYS = {
   NOTION_CONFIG: 'notionConfig',
   NOTES: 'notes',
   BACKUP_CAPTURE: 'backupCapture',
+  WINDOW_BACKUPS: 'windowBackups',
   HEARTBEAT: 'heartbeat',
 } as const;
 
@@ -225,6 +226,45 @@ export async function getBackupCapture(): Promise<BackupCapture | null> {
 
 export async function clearBackupCapture(): Promise<void> {
   await chrome.storage.local.remove(STORAGE_KEYS.BACKUP_CAPTURE);
+}
+
+// Per-Window Backups (for separate session tracking per window)
+export interface WindowBackup {
+  timestamp: number;
+  tabs: Tab[];
+}
+
+export interface WindowBackups {
+  [windowId: string]: WindowBackup;
+}
+
+export async function saveWindowBackup(windowId: number, tabs: Tab[]): Promise<void> {
+  const backups = await getWindowBackups();
+  backups[windowId.toString()] = {
+    timestamp: Date.now(),
+    tabs,
+  };
+  await chrome.storage.local.set({ [STORAGE_KEYS.WINDOW_BACKUPS]: backups });
+}
+
+export async function getWindowBackups(): Promise<WindowBackups> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.WINDOW_BACKUPS);
+  return (result[STORAGE_KEYS.WINDOW_BACKUPS] as WindowBackups) || {};
+}
+
+export async function getWindowBackup(windowId: number): Promise<WindowBackup | null> {
+  const backups = await getWindowBackups();
+  return backups[windowId.toString()] || null;
+}
+
+export async function clearWindowBackup(windowId: number): Promise<void> {
+  const backups = await getWindowBackups();
+  delete backups[windowId.toString()];
+  await chrome.storage.local.set({ [STORAGE_KEYS.WINDOW_BACKUPS]: backups });
+}
+
+export async function clearAllWindowBackups(): Promise<void> {
+  await chrome.storage.local.remove(STORAGE_KEYS.WINDOW_BACKUPS);
 }
 
 // Heartbeat (for browser close detection)
