@@ -2,35 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Dark Mode Colors (default) */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-surface: #1e293b;
-  --bg-card: #1e293b;
-  --bg-hover: #334155;
-  --bg-active: #475569;
-  
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #94a3b8;
-  --text-muted: #64748b;
-  
-  --border-primary: #334155;
-  --border-secondary: #475569;
-  --border-hover: #64748b;
-  
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-active: #1d4ed8;
-  
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  
-  --scrollbar-track: #1e293b;
-  --scrollbar-thumb: #475569;
-  --scrollbar-thumb-hover: #64748b;
+/* Departure Mono Font */
+@font-face {
+  font-family: 'Departure Mono';
+  src: local('Departure Mono'), local('DepartureMono-Regular');
+  font-weight: 400;
+  font-style: normal;
 }
 
+:root {
+  /* Figma Make Dark Theme Colors */
+  --bg-primary: #000000;
+  --bg-secondary: #121212;
+  --bg-tertiary: #1a1a1a;
+  --bg-surface: #121212;
+  --bg-card: #121212;
+  --bg-hover: #0a0a0a;
+  --bg-active: #1a1a1a;
+  
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --text-tertiary: rgba(193, 179, 255, 0.63);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  
+  --border-primary: rgba(255, 255, 255, 0.12);
+  --border-secondary: #2c2c30;
+  --border-hover: rgba(255, 255, 255, 0.2);
+  
+  --primary: #3232ff;
+  --primary-hover: #4848ff;
+  --primary-active: #2828dd;
+  --primary-border: #6f6ffe;
+  
+  --success: #1aa807;
+  --success-text: springgreen;
+  --warning: #f59e0b;
+  --error: #ca0101;
+  --error-border: #ff7e7e;
+  
+  --accent-purple: #7763ce;
+  
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  
+  /* Font */
+  --font-mono: 'Departure Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-mono);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

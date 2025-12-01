@@ -1,73 +1,96 @@
-* {
+/* Popup Container - Figma Make Style */
+/* Fixed dimensions: 600x457 */
+
+html, body {
+  width: 600px;
+  height: 457px;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
+  overflow: hidden;
+  background: #000000;
 }
 
-body {
-  width: 300px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+#root {
+  width: 600px;
+  height: 457px;
 }
 
-html {
-  height: auto;
+/* Tailwind-like utility classes for zinc colors */
+.bg-zinc-900 {
+  background-color: #18181b;
 }
 
-.popup-container {
-  padding: 20px;
+.bg-zinc-800 {
+  background-color: #27272a;
 }
 
-.popup-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin-bottom: 20px;
+.hover\:bg-zinc-800:hover {
+  background-color: #27272a;
 }
 
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-.stat-label {
-  font-size: 14px;
-  color: var(--text-secondary);
+@keyframes slideIn {
+  from {
+    transform: translateX(250px);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
-.stat-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-in forwards;
 }
 
-.popup-button {
-  width: 100%;
-  padding: 12px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out forwards;
 }
 
-.popup-button:hover {
-  background: var(--primary-hover);
+/* Custom scrollbar for the popup */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.popup-button:active {
-  background: var(--primary-active);
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Departure Mono font fallback */
+@font-face {
+  font-family: 'Departure Mono';
+  src: local('Departure Mono'), local('DepartureMono-Regular');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Loading state */
 .popup-loading {
-  text-align: center;
-  padding: 40px 0;
-  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 600px;
+  height: 457px;
+  background: #000000;
+  font-family: 'Departure Mono', monospace;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
 }
-
