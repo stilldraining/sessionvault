@@ -12,11 +12,15 @@ interface SelectionContextType {
   onBulkSaveToNotion?: () => void;
   onBulkDismiss?: () => void;
   onBulkCloseTab?: () => void;
+  onBulkMoveToActiveWindow?: () => void;
+  onBulkRestoreTabs?: () => void;
   setBulkActions: (actions: {
     onBulkBookmark: () => void;
     onBulkSaveToNotion: () => void;
     onBulkDismiss?: () => void;
     onBulkCloseTab?: () => void;
+    onBulkMoveToActiveWindow?: () => void;
+    onBulkRestoreTabs?: () => void;
   }) => void;
 }
 
@@ -30,6 +34,8 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     onBulkSaveToNotion: () => void;
     onBulkDismiss?: () => void;
     onBulkCloseTab?: () => void;
+    onBulkMoveToActiveWindow?: () => void;
+    onBulkRestoreTabs?: () => void;
   } | null>(null);
 
   const toggleSelection = useCallback((tabId: string) => {
@@ -52,14 +58,19 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     setSelectedTabs(new Set());
   }, []);
 
-  const setBulkActions = useCallback((actions: {
-    onBulkBookmark: () => void;
-    onBulkSaveToNotion: () => void;
-    onBulkDismiss?: () => void;
-    onBulkCloseTab?: () => void;
-  }) => {
-    setBulkActionsState(actions);
-  }, []);
+  const setBulkActions = useCallback(
+    (actions: {
+      onBulkBookmark: () => void;
+      onBulkSaveToNotion: () => void;
+      onBulkDismiss?: () => void;
+      onBulkCloseTab?: () => void;
+      onBulkMoveToActiveWindow?: () => void;
+      onBulkRestoreTabs?: () => void;
+    }) => {
+      setBulkActionsState(actions);
+    },
+    []
+  );
 
   return (
     <SelectionContext.Provider
@@ -75,6 +86,8 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
         onBulkSaveToNotion: bulkActions?.onBulkSaveToNotion,
         onBulkDismiss: bulkActions?.onBulkDismiss,
         onBulkCloseTab: bulkActions?.onBulkCloseTab,
+        onBulkMoveToActiveWindow: bulkActions?.onBulkMoveToActiveWindow,
+        onBulkRestoreTabs: bulkActions?.onBulkRestoreTabs,
         setBulkActions,
       }}
     >

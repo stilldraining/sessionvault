@@ -211,6 +211,94 @@ export default function SessionDetail() {
     }
   }, [session, selectedTabs, clearSelection, isCurrentSession]);
 
+  const handleBulkMoveToActiveWindow = useCallback(async () => {
+    if (!session || selectedTabs.size === 0 || isCurrentSession) return;
+
+    const tabsToMove = session.tabs.filter((tab) => selectedTabs.has(tab.id));
+
+    try {
+      // Open selected tabs in the active window, but keep the extension in focus
+      for (const tab of tabsToMove) {
+        await chrome.tabs.create({ url: tab.url, active: false });
+      }
+
+      // Remove moved tabs from the past session
+      const remainingTabs = session.tabs.filter((tab) => !selectedTabs.has(tab.id));
+
+      // If no tabs are left at all, delete the session and navigate to Active Window
+      if (remainingTabs.length === 0) {
+        await deleteSession(session.id);
+        clearSelection();
+        navigate('/session/current');
+        return;
+      }
+
+      // Recalculate session status based on remaining tabs (mirror updateTabStatus logic)
+      const allTabsProcessed =
+        remainingTabs.length > 0 &&
+        remainingTabs.every(
+          (tab) =>
+            tab.status === 'bookmarked' ||
+            tab.status === 'saved-to-notion' ||
+            tab.status === 'dismissed'
+        );
+      const hasPendingTabs = remainingTabs.some((tab) => tab.status === 'pending');
+
+      let newStatus = session.status;
+      if (!isCurrentSession) {
+        if (allTabsProcessed) {
+          newStatus = 'organised';
+        } else if (hasPendingTabs) {
+          newStatus = 'to-do';
+        }
+      }
+
+      const updatedSession: Session = {
+        ...session,
+        tabs: remainingTabs,
+        status: newStatus,
+      };
+
+      setSession(updatedSession);
+      await updateSession(session.id, { tabs: remainingTabs, status: newStatus });
+
+      clearSelection();
+    } catch (error) {
+      console.error('Error moving tabs to active window:', error);
+      alert('Failed to move some tabs. Please try again.');
+    }
+  }, [session, selectedTabs, isCurrentSession, clearSelection, navigate]);
+
+  const handleRestoreSelectedTabs = useCallback(async () => {
+    if (!session || isCurrentSession || selectedTabs.size === 0) return;
+
+    try {
+      // Use the same filtering logic as the global restore, but scoped to selected tabs
+      const tabsToRestore = session.tabs.filter(
+        (tab) =>
+          selectedTabs.has(tab.id) &&
+          tab.status !== 'dismissed' &&
+          tab.status !== 'bookmarked' &&
+          tab.status !== 'saved-to-notion'
+      );
+
+      // Query all existing tabs in the browser to check for duplicates
+      const existingTabs = await chrome.tabs.query({});
+      const existingUrls = new Set(existingTabs.map((tab) => tab.url).filter(Boolean));
+
+      // Filter out tabs whose URLs already exist in the browser
+      const tabsToCreate = tabsToRestore.filter((tab) => !existingUrls.has(tab.url));
+
+      // Create tabs only for URLs that don't already exist
+      for (const tab of tabsToCreate) {
+        await chrome.tabs.create({ url: tab.url });
+      }
+    } catch (error) {
+      console.error('Error restoring selected tabs:', error);
+      alert('Failed to restore selected tabs. Please try again.');
+    }
+  }, [session, isCurrentSession, selectedTabs]);
+
   // Register bulk actions and update pending tab IDs when session changes
   useEffect(() => {
     if (session) {
@@ -219,7 +307,7 @@ export default function SessionDetail() {
         .map((tab) => tab.id);
       setPendingTabIds(pendingIds);
       
-      // For current session, use Close Tab; for past sessions, use Dismiss
+      // For current session, use Close Tab; for past sessions, use Dismiss and selection actions
       if (isCurrentSession) {
         setBulkActions({
           onBulkBookmark: handleBulkBookmark,
@@ -231,10 +319,24 @@ export default function SessionDetail() {
           onBulkBookmark: handleBulkBookmark,
           onBulkSaveToNotion: handleBulkSaveToNotion,
           onBulkDismiss: handleBulkDismiss,
+          onBulkMoveToActiveWindow: handleBulkMoveToActiveWindow,
+          onBulkRestoreTabs: handleRestoreSelectedTabs,
         });
       }
     }
-  }, [session, selectedTabs, handleBulkBookmark, handleBulkSaveToNotion, handleBulkDismiss, handleBulkCloseTab, isCurrentSession, setPendingTabIds, setBulkActions]);
+  }, [
+    session,
+    selectedTabs,
+    handleBulkBookmark,
+    handleBulkSaveToNotion,
+    handleBulkDismiss,
+    handleBulkCloseTab,
+    handleBulkMoveToActiveWindow,
+    handleRestoreSelectedTabs,
+    isCurrentSession,
+    setPendingTabIds,
+    setBulkActions,
+  ]);
 
   // Clear selection when session ID changes (not on every render)
   useEffect(() => {
@@ -521,14 +623,14 @@ export default function SessionDetail() {
         </div>
       )}
 
-      {/* Show dismissed section when there are dismissed tabs (even if session is completed) */}
+      {/* Show killed section when there are dismissed tabs (even if session is completed) */}
       {dismissedTabs.length > 0 && (
         <div className="dismissed-section">
           <button
             className="dismissed-section-header"
             onClick={() => setDismissedExpanded(!dismissedExpanded)}
           >
-            <span>Dismissed ({dismissedTabs.length})</span>
+            <span>Killed ({dismissedTabs.length})</span>
             <span className="dismissed-toggle">{dismissedExpanded ? '▼' : '▶'}</span>
           </button>
           {dismissedExpanded && (

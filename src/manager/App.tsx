@@ -18,7 +18,19 @@ function NavigationActions() {
   const [isCurrentSession, setIsCurrentSession] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<'pending' | 'to-do' | 'organised' | 'archived' | null>(null);
 
-  const { selectedTabs, hasSelection, pendingTabIds, selectAll, clearSelection, onBulkBookmark, onBulkSaveToNotion, onBulkDismiss, onBulkCloseTab } = useSelection();
+  const {
+    selectedTabs,
+    hasSelection,
+    pendingTabIds,
+    selectAll,
+    clearSelection,
+    onBulkBookmark,
+    onBulkSaveToNotion,
+    onBulkDismiss,
+    onBulkCloseTab,
+    onBulkMoveToActiveWindow,
+    onBulkRestoreTabs,
+  } = useSelection();
   const { onRestoreWindow, onArchiveSession, onDeleteSession, onRestoreSession } = useSessionActions();
 
   // Extract session ID from pathname
@@ -84,16 +96,32 @@ function NavigationActions() {
                 Close Tab
               </button>
             ) : (
-              <button 
-                className="nav-action-button nav-action-dismiss" 
-                onClick={onBulkDismiss}
-                disabled={!onBulkDismiss}
-              >
-                Dismiss
-              </button>
+              <>
+                <button
+                  className="nav-action-button nav-action-move-active"
+                  onClick={onBulkMoveToActiveWindow}
+                  disabled={!onBulkMoveToActiveWindow}
+                >
+                  Move to active window
+                </button>
+                <button
+                  className="nav-action-button nav-action-restore-selected"
+                  onClick={onBulkRestoreTabs}
+                  disabled={!onBulkRestoreTabs}
+                >
+                  Restore tabs
+                </button>
+                <button 
+                  className="nav-action-button nav-action-dismiss" 
+                  onClick={onBulkDismiss}
+                  disabled={!onBulkDismiss}
+                >
+                  Kill
+                </button>
+              </>
             )}
             <button className="nav-action-button nav-action-clear" onClick={clearSelection}>
-              Clear
+              Clear selection
             </button>
           </div>
         </>

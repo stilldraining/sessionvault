@@ -126,7 +126,7 @@ export default function TabCard({
   const getStatusLabel = () => {
     switch (tab.status) {
       case 'dismissed':
-        return 'Dismissed';
+        return 'Killed';
       case 'bookmarked':
         return 'Bookmarked';
       case 'saved-to-notion':
